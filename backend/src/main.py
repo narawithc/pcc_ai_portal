@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.auth.router import router as auth_router
 from src.pdpa.router import router as pdpa_router
 from src.billing.router import router as billing_router
+from src.credentials.router import router as credentials_router
 
 app = FastAPI(title="PCC AI Portal Backend", version="0.1.0")
 
@@ -22,6 +23,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(pdpa_router, prefix="/guardrails", tags=["pdpa"])
 app.include_router(billing_router, prefix="/billing", tags=["billing"])
+app.include_router(credentials_router, prefix="/api/v1/admin/credentials", tags=["credentials"])
 
 
 @app.get("/health")
