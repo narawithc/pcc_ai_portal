@@ -59,6 +59,22 @@ litellm_settings:
   failure_callback: ["webhook"]
   webhook_url: http://backend:8000/audit/post-call
 
+# ── Guardrails (pre_call hooks → backend) ────────────────────
+guardrails:
+  - guardrail_name: "thai-pii-detector"
+    litellm_params:
+      guardrail: generic_guardrail_api
+      mode: "pre_call"
+      api_base: "http://backend:8000/guardrails"
+      default_on: true
+
+  - guardrail_name: "data-classifier"
+    litellm_params:
+      guardrail: generic_guardrail_api
+      mode: "pre_call"
+      api_base: "http://backend:8000/classifier"
+      default_on: true
+
 # ── Router Settings ───────────────────────────────────────────
 router_settings:
   routing_strategy: simple-shuffle

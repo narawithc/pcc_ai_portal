@@ -18,22 +18,26 @@ BACKEND_BASE_URL = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
 
 
 class ClassifierRequest(BaseModel):
-    messages: list[dict]
-    model: str
+    messages: list[dict] | None = None
+    structured_messages: list[dict] | None = None
+    texts: list[str] | None = None
+    model: str | None = None
     user: str | None = None
 
 
 class ClassifierResponse(BaseModel):
-    success: bool
-    action: str           # "allow" | "warn" | "block"
-    classification: str   # "public" | "internal" | "confidential" | "top_secret"
-    reasons: list[str]
-    message: str | None = None
+    # LiteLLM generic_guardrail_api format
+    action: str           # "ALLOW" | "BLOCK"
+    blocked_reason: str | None = None
+    # extra fields for audit/logging
+    classification: str = "internal"
+    reasons: list[str] = []
 
 
-def _extract_text(messages: list[dict]) -> str:
-    parts = []
-    for msg in messages:
+def _extract_text(req: "ClassifierRequest") -> str:
+    parts: list[str] = []
+    sources = req.messages or req.structured_messages or []
+    for msg in sources:
         content = msg.get("content", "")
         if isinstance(content, str):
             parts.append(content)
@@ -41,49 +45,37 @@ def _extract_text(messages: list[dict]) -> str:
             for block in content:
                 if isinstance(block, dict) and block.get("type") == "text":
                     parts.append(block.get("text", ""))
+    if req.texts:
+        parts.extend(req.texts)
     return " ".join(parts)
 
 
 @router.post("/check", response_model=ClassifierResponse)
+@router.post("/beta/litellm_basic_guardrail_api", response_model=ClassifierResponse)
 async def classifier_check(req: ClassifierRequest) -> ClassifierResponse:
-    text = _extract_text(req.messages)
+    text = _extract_text(req)
     tier, reasons = classify(text)
 
     if tier == "top_secret":
-        # Auto-create incident asynchronously (fire-and-forget via httpx)
         await _auto_incident(
             user=req.user,
             title=f"Top Secret data detected in AI prompt (model: {req.model})",
             description=f"Classifier blocked prompt. Reasons: {reasons}. User: {req.user}",
         )
         return ClassifierResponse(
-            success=False,
-            action="block",
-            classification=tier,
-            reasons=reasons,
-            message=(
-                "ระบบตรวจพบสัญญาณข้อมูลระดับ Top Secret ในข้อความของคุณ\n"
-                "ห้ามส่งข้อมูลประเภทนี้เข้า AI ภายนอก (ตาม AI Policy Section 4)\n"
+            action="BLOCKED",
+            blocked_reason=(
+                "ระบบตรวจพบสัญญาณข้อมูลระดับ Top Secret ในข้อความของคุณ "
+                "ห้ามส่งข้อมูลประเภทนี้เข้า AI ภายนอก (ตาม AI Policy Section 4) "
                 "ถ้าต้องการใช้กับข้อมูล Top Secret ให้ใช้ Local Ollama เท่านั้น"
             ),
-        )
-
-    if tier == "confidential":
-        return ClassifierResponse(
-            success=True,
-            action="warn",
             classification=tier,
             reasons=reasons,
-            message=(
-                "ข้อความนี้อาจมีข้อมูลระดับ Confidential\n"
-                "ตรวจสอบว่าคุณใช้ Enterprise AI Portal (ai.precise.co.th) เท่านั้น\n"
-                "ผลลัพธ์นี้ถูกบันทึกในระบบ audit log"
-            ),
         )
 
+    # confidential: allow but log (audit_logs.classification = confidential)
     return ClassifierResponse(
-        success=True,
-        action="allow",
+        action="ALLOWED",
         classification=tier,
         reasons=reasons,
     )

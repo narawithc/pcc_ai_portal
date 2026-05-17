@@ -40,24 +40,28 @@ _ACTIONS = {
 
 
 class GuardrailRequest(BaseModel):
-    """LiteLLM ส่ง request body นี้มา"""
-    messages: list[dict]
-    model: str
+    """Accepts both old format (messages) and LiteLLM generic_guardrail_api format (structured_messages/texts)."""
+    messages: list[dict] | None = None
+    structured_messages: list[dict] | None = None
+    texts: list[str] | None = None
+    model: str | None = None
     user: str | None = None
     metadata: dict | None = None
 
 
 class GuardrailResponse(BaseModel):
-    success: bool
-    action: str  # "allow" | "block"
-    pii_detected: list[str]
-    message: str | None = None
+    # LiteLLM generic_guardrail_api format: action must be "ALLOW" or "BLOCK"
+    action: str           # "ALLOW" | "BLOCK"
+    blocked_reason: str | None = None
+    # extra fields for internal use / logging
+    pii_detected: list[str] = []
 
 
-def _extract_text(messages: list[dict]) -> str:
-    """รวม content ทุก message เป็น text เดียว"""
-    parts = []
-    for msg in messages:
+def _extract_text(req: "GuardrailRequest") -> str:
+    """รวม content จาก messages หรือ structured_messages หรือ texts"""
+    parts: list[str] = []
+    sources = req.messages or req.structured_messages or []
+    for msg in sources:
         content = msg.get("content", "")
         if isinstance(content, str):
             parts.append(content)
@@ -65,15 +69,18 @@ def _extract_text(messages: list[dict]) -> str:
             for block in content:
                 if isinstance(block, dict) and block.get("type") == "text":
                     parts.append(block.get("text", ""))
+    if req.texts:
+        parts.extend(req.texts)
     return " ".join(parts)
 
 
 @router.post("/pii-check", response_model=GuardrailResponse)
+@router.post("/beta/litellm_basic_guardrail_api", response_model=GuardrailResponse)
 async def pii_check(
     req: GuardrailRequest,
     x_user_id: str | None = Header(default=None, alias="x-user-id"),
 ) -> GuardrailResponse:
-    text = _extract_text(req.messages)
+    text = _extract_text(req)
     detected: list[str] = []
     should_block = False
 
@@ -84,7 +91,7 @@ async def pii_check(
                 should_block = True
 
     if not detected:
-        return GuardrailResponse(success=True, action="allow", pii_detected=[])
+        return GuardrailResponse(action="ALLOW", pii_detected=[])
 
     # Resolve user_id from header or request user field
     user_email = req.user or x_user_id
@@ -96,17 +103,15 @@ async def pii_check(
 
     if should_block:
         return GuardrailResponse(
-            success=False,
-            action="block",
+            action="BLOCKED",
+            blocked_reason="พบข้อมูลส่วนบุคคลที่มีความละเอียดอ่อน (เลขบัตรประชาชน) กรุณาลบออกก่อนส่ง",
             pii_detected=detected,
-            message="พบข้อมูลส่วนบุคคลที่มีความละเอียดอ่อน (เลขบัตรประชาชน) กรุณาลบออกก่อนส่ง",
         )
 
     return GuardrailResponse(
-        success=True,
-        action="allow",
+        action="ALLOWED",
+        blocked_reason=None,
         pii_detected=detected,
-        message="พบข้อมูลที่อาจเป็น PII กรุณาระวังการแชร์ข้อมูลส่วนบุคคล",
     )
 
 
