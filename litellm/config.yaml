@@ -64,6 +64,9 @@ litellm_settings:
     similarity_threshold: 0.80
     redis_semantic_cache_embedding_model: text-embedding
   max_input_tokens: 100000
+  success_callback: ["webhook"]
+  failure_callback: ["webhook"]
+  webhook_url: http://backend:8000/audit/post-call
 
 # ── Router Settings ───────────────────────────────────────────
 router_settings:

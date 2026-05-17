@@ -307,5 +307,16 @@ curl -s http://localhost:8000/billing/department \
 | TC-051 | No content in audit | | | |
 | TC-060 | Admin dept report | | | |
 | TC-061 | Non-admin dept report 403 | | | |
+| TC-070 | Top Secret keyword → block | | | |
+| TC-071 | Confidential (PII in prompt) → warn | | | |
+| TC-072 | Public prompt → allow, classification=public | | | |
+| TC-073 | Top Secret auto-creates incident row | | | |
+| TC-080 | POST /incidents → 201 + email | | | |
+| TC-081 | GET /incidents admin only | | | |
+| TC-082 | PATCH /incidents/{id} update status | | | |
+| TC-090 | policy_acceptance row after accept | | | |
+| TC-091 | audit_logs.classification populated | | | |
+| TC-092 | audit_logs written after LiteLLM call | | | |
+| TC-093 | WEBUI_BANNERS visible on Open-WebUI | | | |
 
-**Pass criteria:** TC-001, TC-002, TC-010, TC-020, TC-021, TC-040, TC-050 ต้องผ่านก่อน demo
+**Pass criteria:** TC-001, TC-002, TC-010, TC-020, TC-021, TC-040, TC-050, TC-070, TC-080 ต้องผ่านก่อน policy go-live

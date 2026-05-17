@@ -42,9 +42,15 @@ Config อยู่ใน `litellm/` directory
 - [x] LiteLLM model routing (3 Claude models)
 - [x] RBAC 5 tiers design
 - [x] Test plan v0.1
-- [ ] Audit log implementation
-- [ ] PII detection ภาษาไทย
-- [ ] Production hardening
+- [x] Audit log implementation (post_call hook → audit_logs + classification)
+- [x] PII detection ภาษาไทย (persist to pii_events)
+- [x] Data classification 4-tier heuristic (classifier guardrail)
+- [x] AI Policy v1.0 (docs/ai-policy.md + DB schema 003)
+- [x] Incident reporting (POST /incidents + email notify)
+- [x] Tool registry (ai_tools_registry table)
+- [x] Semantic cache (Redis + Titan embeddings)
+- [ ] Policy acceptance modal (Open-WebUI first-login)
+- [ ] Production hardening (pentest, DLP for attachments)
 
 ## Project Agents
 agents อยู่ใน `.claude/agents/` — ใช้ได้ทันที

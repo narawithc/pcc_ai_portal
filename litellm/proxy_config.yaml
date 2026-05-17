@@ -103,3 +103,10 @@ guardrails:
       mode: "pre_call"
       guardrail_endpoint: "http://backend:8000/guardrails/pii-check"
       default_on: true
+
+  - guardrail_name: "data-classifier"
+    litellm_params:
+      guardrail: custom
+      mode: "pre_call"
+      guardrail_endpoint: "http://backend:8000/classifier/check"
+      default_on: true

@@ -9,11 +9,16 @@ PII ที่ detect:
   - ชื่อ-นามสกุลภาษาไทย (heuristic: คำขึ้นต้นด้วย นาย/นาง/นางสาว/ดร.)
 """
 
+import os
 import re
-from fastapi import APIRouter
+import uuid
+import asyncpg
+from fastapi import APIRouter, Header
 from pydantic import BaseModel
 
 router = APIRouter()
+
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 # ── PII Patterns ──────────────────────────────────────────────
 _PATTERNS = {
@@ -39,6 +44,7 @@ class GuardrailRequest(BaseModel):
     messages: list[dict]
     model: str
     user: str | None = None
+    metadata: dict | None = None
 
 
 class GuardrailResponse(BaseModel):
@@ -63,7 +69,10 @@ def _extract_text(messages: list[dict]) -> str:
 
 
 @router.post("/pii-check", response_model=GuardrailResponse)
-def pii_check(req: GuardrailRequest) -> GuardrailResponse:
+async def pii_check(
+    req: GuardrailRequest,
+    x_user_id: str | None = Header(default=None, alias="x-user-id"),
+) -> GuardrailResponse:
     text = _extract_text(req.messages)
     detected: list[str] = []
     should_block = False
@@ -77,6 +86,14 @@ def pii_check(req: GuardrailRequest) -> GuardrailResponse:
     if not detected:
         return GuardrailResponse(success=True, action="allow", pii_detected=[])
 
+    # Resolve user_id from header or request user field
+    user_email = req.user or x_user_id
+    await _persist_pii_event(
+        user_email=user_email,
+        pii_types=detected,
+        action="blocked" if should_block else "warned",
+    )
+
     if should_block:
         return GuardrailResponse(
             success=False,
@@ -85,10 +102,41 @@ def pii_check(req: GuardrailRequest) -> GuardrailResponse:
             message="พบข้อมูลส่วนบุคคลที่มีความละเอียดอ่อน (เลขบัตรประชาชน) กรุณาลบออกก่อนส่ง",
         )
 
-    # warned: อนุญาตแต่บันทึก log
     return GuardrailResponse(
         success=True,
         action="allow",
         pii_detected=detected,
         message="พบข้อมูลที่อาจเป็น PII กรุณาระวังการแชร์ข้อมูลส่วนบุคคล",
     )
+
+
+async def _persist_pii_event(
+    user_email: str | None,
+    pii_types: list[str],
+    action: str,
+) -> None:
+    if not DATABASE_URL:
+        return
+    try:
+        conn = await asyncpg.connect(DATABASE_URL)
+        try:
+            user_id = None
+            if user_email:
+                row = await conn.fetchrow("SELECT id FROM users WHERE email = $1", user_email)
+                if row:
+                    user_id = str(row["id"])
+            import json
+            await conn.execute(
+                """
+                INSERT INTO pii_events (id, user_id, pii_types, action)
+                VALUES ($1, $2, $3, $4)
+                """,
+                str(uuid.uuid4()),
+                user_id,
+                json.dumps(pii_types),
+                action,
+            )
+        finally:
+            await conn.close()
+    except Exception:
+        pass  # don't block guardrail if DB write fails
