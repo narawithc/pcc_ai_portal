@@ -57,7 +57,9 @@ litellm_settings:
   max_input_tokens: 100000
   success_callback: ["webhook"]
   failure_callback: ["webhook"]
-  webhook_url: http://backend:8000/audit/post-call
+  # WEBHOOK_URL is set via WEBHOOK_URL env var in docker-compose (litellm service)
+  # LiteLLM webhook callback reads the URL only from the WEBHOOK_URL env var,
+  # not from a yaml key. See: litellm/integrations/webhook/webhook.py
 
 # ── Guardrails (pre_call hooks → backend) ────────────────────
 guardrails:

@@ -56,6 +56,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
       STORE_MODEL_IN_DB: "True"
       UI_THEME: "dark"
+      WEBHOOK_URL: http://backend:8000/audit/post-call
     ports:
       - "4000:4000"
     depends_on:
