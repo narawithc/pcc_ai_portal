@@ -15,6 +15,7 @@ from src.incidents.router import router as incidents_router
 from src.audit.router import router as audit_router
 from src.policy.router import router as policy_router
 from src.dlp.router import router as dlp_router
+from src.provision.router import router as provision_router
 
 app = FastAPI(title="PCC AI Portal Backend", version="0.2.0")
 
@@ -46,6 +47,7 @@ app.include_router(incidents_router, prefix="/incidents", tags=["incidents"])
 app.include_router(audit_router, prefix="/audit", tags=["audit"])
 app.include_router(policy_router, prefix="/policy", tags=["policy"])
 app.include_router(dlp_router, prefix="/dlp", tags=["dlp"])
+app.include_router(provision_router, prefix="/auth", tags=["auth"])
 
 
 @app.get("/health")

@@ -72,6 +72,22 @@ services:
       retries: 5
       start_period: 300s
 
+  pipelines:
+    image: ghcr.io/open-webui/pipelines:main
+    container_name: pcc-pipelines
+    restart: unless-stopped
+    volumes:
+      - ../open-webui/pipelines:/app/pipelines:ro
+    environment:
+      BACKEND_URL: http://backend:8000
+      LITELLM_URL: http://litellm:4000
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-}
+    ports:
+      - "9099:9099"
+    depends_on:
+      backend:
+        condition: service_healthy
+
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: pcc-open-webui
@@ -80,9 +96,6 @@ services:
       - open_webui_data:/app/backend/data
       - ../open-webui/config/branding:/app/backend/static/branding:ro
     environment:
-      # เชื่อม LiteLLM เป็น OpenAI-compatible endpoint
-      OPENAI_API_BASE_URL: http://litellm:4000/v1
-      OPENAI_API_KEY: ${LITELLM_MASTER_KEY:-sk-pcc-master-key}
       # ปิด Ollama เพราะไม่ใช้
       ENABLE_OLLAMA_API: "false"
       # เปิดชั่วคราวเพื่อสร้าง admin user ครั้งแรก — ปิดหลังสร้างเสร็จ
@@ -92,11 +105,24 @@ services:
       WEBUI_NAME: "PCC AI Portal"
       WEBUI_URL: http://localhost:3000
       DATABASE_URL: postgresql://${POSTGRES_USER:-pcc_admin}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-pcc_ai}
+      # OIDC — Azure Entra ID
+      ENABLE_OAUTH_SIGNUP: "true"
+      OAUTH_MERGE_ACCOUNTS_BY_EMAIL: "true"
+      OAUTH_CLIENT_ID: ${AZURE_CLIENT_ID:-}
+      OAUTH_CLIENT_SECRET: ${AZURE_CLIENT_SECRET:-}
+      OPENID_PROVIDER_URL: https://login.microsoftonline.com/${AZURE_TENANT_ID:-placeholder}/v2.0/.well-known/openid-configuration
+      OAUTH_SCOPES: "openid email profile"
+      OAUTH_PROVIDER_NAME: "Precise AD"
+      # Pipelines service as additional OpenAI-compatible endpoint
+      OPENAI_API_BASE_URLS: "http://litellm:4000/v1;http://pipelines:9099/v1"
+      OPENAI_API_KEYS: "${LITELLM_MASTER_KEY:-sk-pcc-master-key};${PIPELINES_API_KEY:-0p3n-w3bu!}"
     ports:
       - "3000:8080"
     depends_on:
       litellm:
         condition: service_healthy
+      pipelines:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
