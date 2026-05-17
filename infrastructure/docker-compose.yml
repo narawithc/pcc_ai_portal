@@ -77,7 +77,7 @@ services:
     container_name: pcc-pipelines
     restart: unless-stopped
     volumes:
-      - ../open-webui/pipelines:/app/pipelines:ro
+      - ../open-webui/pipelines:/app/pipelines
     environment:
       BACKEND_URL: http://backend:8000
       LITELLM_URL: http://litellm:4000
