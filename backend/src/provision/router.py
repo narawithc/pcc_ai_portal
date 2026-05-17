@@ -5,7 +5,7 @@ import os
 import asyncpg
 import httpx
 from fastapi import APIRouter, Header, HTTPException
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -16,7 +16,7 @@ INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "")
 
 
 class ProvisionRequest(BaseModel):
-    email: EmailStr
+    email: str
 
 
 class ProvisionResponse(BaseModel):
