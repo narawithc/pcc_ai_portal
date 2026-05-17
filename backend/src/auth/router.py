@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Depends, Header
 from pydantic import BaseModel
 from jose import jwt, JWTError
 import httpx
+import asyncpg
 
 router = APIRouter()
 
@@ -18,6 +19,8 @@ AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID", "")
 AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 ALGORITHM = "HS256"
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+CURRENT_POLICY_VERSION = os.getenv("POLICY_VERSION", "v1.0")
 
 # RBAC tier → allowed models
 TIER_MODELS = {
@@ -51,6 +54,27 @@ DEV_USERS = {
 }
 
 
+async def _check_policy_accepted(email: str) -> bool:
+    """Return True if user has accepted the current policy version."""
+    if not DATABASE_URL:
+        return True  # dev: skip if no DB
+    try:
+        conn = await asyncpg.connect(DATABASE_URL)
+        try:
+            user_row = await conn.fetchrow("SELECT id FROM users WHERE email = $1", email)
+            if not user_row:
+                return False
+            row = await conn.fetchrow(
+                "SELECT id FROM policy_acceptance WHERE user_id = $1 AND policy_version = $2",
+                str(user_row["id"]), CURRENT_POLICY_VERSION,
+            )
+            return row is not None
+        finally:
+            await conn.close()
+    except Exception:
+        return True  # don't block login on DB error
+
+
 def _make_internal_token(user: UserInfo) -> str:
     """สร้าง JWT สำหรับใช้ภายใน portal"""
     return jwt.encode(user.model_dump(), SECRET_KEY, algorithm=ALGORITHM)
@@ -58,9 +82,8 @@ def _make_internal_token(user: UserInfo) -> str:
 
 @router.post("/token")
 async def get_token(req: TokenRequest) -> dict:
-    """แลก Azure AD token เป็น internal JWT"""
+    """แลก Azure AD token เป็น internal JWT + ส่ง policy_accepted flag"""
     if AUTH_MODE == "dev":
-        # dev: ใช้ azure_token เป็น email โดยตรง
         email = req.azure_token
         mock = DEV_USERS.get(email)
         if not mock:
@@ -72,19 +95,24 @@ async def get_token(req: TokenRequest) -> dict:
             tier=mock["tier"],
             allowed_models=TIER_MODELS[mock["tier"]],
         )
-        return {"access_token": _make_internal_token(user), "token_type": "bearer"}
+    else:
+        claims = await _validate_azure_token(req.azure_token)
+        tier = claims.get("extension_pcc_tier", "basic")
+        user = UserInfo(
+            user_id=claims["oid"],
+            email=claims.get("upn", claims.get("email", "")),
+            department=claims.get("department", "Unknown"),
+            tier=tier,
+            allowed_models=TIER_MODELS.get(tier, TIER_MODELS["basic"]),
+        )
 
-    # prod: validate Azure AD token
-    claims = await _validate_azure_token(req.azure_token)
-    tier = claims.get("extension_pcc_tier", "basic")  # custom claim จาก Azure AD
-    user = UserInfo(
-        user_id=claims["oid"],
-        email=claims.get("upn", claims.get("email", "")),
-        department=claims.get("department", "Unknown"),
-        tier=tier,
-        allowed_models=TIER_MODELS.get(tier, TIER_MODELS["basic"]),
-    )
-    return {"access_token": _make_internal_token(user), "token_type": "bearer"}
+    policy_accepted = await _check_policy_accepted(user.email)
+    return {
+        "access_token": _make_internal_token(user),
+        "token_type": "bearer",
+        "policy_accepted": policy_accepted,
+        "policy_version": CURRENT_POLICY_VERSION,
+    }
 
 
 async def _validate_azure_token(token: str) -> dict:

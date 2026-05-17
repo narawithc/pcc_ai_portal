@@ -283,6 +283,74 @@ curl -s http://localhost:8000/billing/department \
 
 ---
 
+## TC-090–094: Policy Acceptance
+
+### TC-090: Accept policy → row ใน DB
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8001/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"azure_token": "dev-basic@precise.co.th"}' | jq -r .access_token)
+
+curl -s -X POST http://localhost:8001/policy/accept \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"policy_version": "v1.0"}' | jq .
+```
+
+**Expected:** `{"accepted": true, "policy_version": "v1.0", "user": "dev-basic@precise.co.th"}`
+
+```bash
+docker compose -f infrastructure/docker-compose.yml exec postgres \
+  psql -U pcc_admin -d pcc_ai \
+  -c "SELECT user_id, policy_version, accepted_at, ip_address FROM policy_acceptance;"
+```
+
+**Expected:** 1 row with policy_version = 'v1.0'
+
+### TC-091: /policy/status → accepted=true หลัง accept
+
+```bash
+curl -s http://localhost:8001/policy/status \
+  -H "Authorization: Bearer $TOKEN" | jq .
+```
+
+**Expected:** `{"accepted": true, "policy_version": "v1.0", ...}`
+
+### TC-092: /auth/token response มี policy_accepted field
+
+```bash
+curl -s -X POST http://localhost:8001/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"azure_token": "dev-basic@precise.co.th"}' | jq '{policy_accepted, policy_version}'
+```
+
+**Expected:** `{"policy_accepted": true, "policy_version": "v1.0"}`  
+(ถ้า dev-basic ยังไม่ได้ accept → `policy_accepted: false`)
+
+### TC-093: /policy/acceptance-stats admin only
+
+```bash
+ADMIN_TOKEN=$(curl -s -X POST http://localhost:8001/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"azure_token": "dev-admin@precise.co.th"}' | jq -r .access_token)
+
+curl -s http://localhost:8001/policy/acceptance-stats \
+  -H "Authorization: Bearer $ADMIN_TOKEN" | jq .
+```
+
+**Expected:** JSON with `total_active_users` + `by_version` array
+
+### TC-094: /policy/text ส่ง policy content
+
+```bash
+curl -s http://localhost:8001/policy/text | jq .version
+```
+
+**Expected:** `"v1.0"`
+
+---
+
 ## Test Execution Checklist
 
 | TC | Description | Pass | Fail | Blocked |
@@ -314,9 +382,13 @@ curl -s http://localhost:8000/billing/department \
 | TC-080 | POST /incidents → 201 + email | | | |
 | TC-081 | GET /incidents admin only | | | |
 | TC-082 | PATCH /incidents/{id} update status | | | |
-| TC-090 | policy_acceptance row after accept | | | |
-| TC-091 | audit_logs.classification populated | | | |
-| TC-092 | audit_logs written after LiteLLM call | | | |
-| TC-093 | WEBUI_BANNERS visible on Open-WebUI | | | |
+| TC-090 | POST /policy/accept → 201 + DB row | | | |
+| TC-091 | GET /policy/status → accepted=true | | | |
+| TC-092 | /auth/token response has policy_accepted field | | | |
+| TC-093 | /policy/acceptance-stats admin only | | | |
+| TC-094 | /policy/text returns v1.0 content | | | |
+| TC-095 | audit_logs.classification populated | | | |
+| TC-096 | audit_logs written after LiteLLM call | | | |
+| TC-097 | WEBUI_BANNERS visible on Open-WebUI | | | |
 
-**Pass criteria:** TC-001, TC-002, TC-010, TC-020, TC-021, TC-040, TC-050, TC-070, TC-080 ต้องผ่านก่อน policy go-live
+**Pass criteria:** TC-001, TC-002, TC-010, TC-020, TC-021, TC-040, TC-050, TC-070, TC-080, TC-090 ต้องผ่านก่อน policy go-live

@@ -49,7 +49,7 @@ Config อยู่ใน `litellm/` directory
 - [x] Incident reporting (POST /incidents + email notify)
 - [x] Tool registry (ai_tools_registry table)
 - [x] Semantic cache (Redis + Titan embeddings)
-- [ ] Policy acceptance modal (Open-WebUI first-login)
+- [x] Policy acceptance modal (POST /policy/accept + /policy/status + /auth/token flag)
 - [ ] Production hardening (pentest, DLP for attachments)
 
 ## Project Agents

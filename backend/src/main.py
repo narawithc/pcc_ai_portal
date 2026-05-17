@@ -12,6 +12,7 @@ from src.credentials.router import router as credentials_router
 from src.classifier.router import router as classifier_router
 from src.incidents.router import router as incidents_router
 from src.audit.router import router as audit_router
+from src.policy.router import router as policy_router
 
 app = FastAPI(title="PCC AI Portal Backend", version="0.2.0")
 
@@ -30,6 +31,7 @@ app.include_router(credentials_router, prefix="/api/v1/admin/credentials", tags=
 app.include_router(classifier_router, prefix="/classifier", tags=["classifier"])
 app.include_router(incidents_router, prefix="/incidents", tags=["incidents"])
 app.include_router(audit_router, prefix="/audit", tags=["audit"])
+app.include_router(policy_router, prefix="/policy", tags=["policy"])
 
 
 @app.get("/health")
