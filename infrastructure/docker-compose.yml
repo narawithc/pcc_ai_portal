@@ -183,11 +183,16 @@ services:
     container_name: pcc-alertmanager
     profiles: ["monitoring"]
     restart: unless-stopped
-    command:
-      - "--config.file=/etc/alertmanager/alertmanager.yml"
-      - "--storage.path=/alertmanager"
+    entrypoint: >
+      sh -c "
+        apk add --no-cache gettext 2>/dev/null || true &&
+        envsubst < /etc/alertmanager/alertmanager.yml.tmpl > /tmp/alertmanager.yml &&
+        /bin/alertmanager
+          --config.file=/tmp/alertmanager.yml
+          --storage.path=/alertmanager
+      "
     volumes:
-      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml.tmpl:ro
       - alertmanager_data:/alertmanager
     ports:
       - "9093:9093"
