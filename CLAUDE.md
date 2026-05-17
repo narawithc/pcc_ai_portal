@@ -10,27 +10,46 @@ AI Portal สำหรับองค์กร Precise Technology — open-webui
 - **UI:** Open-WebUI
 - **DB:** PostgreSQL (audit log, user management)
 - **Infra:** Docker Compose
+- **Monitoring:** Prometheus + Grafana + Alertmanager (Docker Compose profile)
 
 ## Commands
 
 ```bash
+# First run
+cp infrastructure/.env.example infrastructure/.env
+# แก้ ENCRYPTION_KEY, AWS credentials, passwords
+
+# Deploy (via script)
+./scripts/deploy.sh core         # infra + litellm + backend + open-webui
+./scripts/deploy.sh monitoring   # prometheus + grafana + alertmanager
+./scripts/deploy.sh all          # ทั้งหมด
+./scripts/deploy.sh status       # health check
+./scripts/deploy.sh logs [svc]   # tail logs
+./scripts/deploy.sh down         # stop (keep volumes)
+./scripts/deploy.sh reset        # stop + wipe volumes
+
+# หรือ docker compose โดยตรง
 cd infrastructure
-cp .env.example .env          # แก้ ANTHROPIC_API_KEY
-docker compose up -d          # start all services
-docker compose logs -f        # tail logs
-docker compose down           # stop
+docker compose up -d                          # core
+docker compose --profile monitoring up -d     # + monitoring
+docker compose --profile monitoring down
 ```
 
 ## Architecture
 
 ```
 pcc-ai-portal/
-├── infrastructure/    ← Docker Compose + .env config
-├── litellm/           ← LiteLLM config (models, routing, RBAC)
-├── open-webui/        ← Open-WebUI customization
-├── backend/           ← Custom backend extensions
-├── database/          ← DB migrations + schema
-└── docs/              ← Test plans, architecture docs
+├── scripts/
+│   └── deploy.sh          ← deploy script (infra / core / monitoring / all)
+├── infrastructure/
+│   ├── docker-compose.yml ← all services + monitoring profile
+│   ├── .env.example
+│   └── monitoring/        ← prometheus.yml, alert-rules.yml, alertmanager.yml, grafana/
+├── litellm/               ← LiteLLM config (models, routing, RBAC)
+├── open-webui/            ← Open-WebUI customization
+├── backend/               ← Custom backend extensions
+├── database/              ← DB migrations + schema
+└── docs/                  ← Test plans, architecture docs
 ```
 
 ## RBAC Model
@@ -50,6 +69,8 @@ Config อยู่ใน `litellm/` directory
 - [x] Tool registry (ai_tools_registry table)
 - [x] Semantic cache (Redis + Titan embeddings)
 - [x] Policy acceptance modal (POST /policy/accept + /policy/status + /auth/token flag)
+- [x] Monitoring stack (Prometheus + Grafana + Alertmanager + 3 dashboards + 10 alert rules)
+- [x] Deploy script (scripts/deploy.sh — infra / core / monitoring / all)
 - [ ] Production hardening (pentest, DLP for attachments)
 
 ## Project Agents
