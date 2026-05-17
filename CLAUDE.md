@@ -72,7 +72,7 @@ Config อยู่ใน `litellm/` directory
 - [x] Monitoring stack (Prometheus + Grafana + Alertmanager + 3 dashboards + 10 alert rules)
 - [x] Deploy script (scripts/deploy.sh — infra / core / monitoring / all)
 - [x] DLP for attachments (POST /dlp/scan-file — txt/md/pdf/docx, PII scan + classifier)
-- [ ] Production hardening (pentest)
+- [x] Production hardening (pentest — JWT defaults, endpoint auth, SQL allowlist, file size limit)
 
 ## Project Agents
 agents อยู่ใน `.claude/agents/` — ใช้ได้ทันที
