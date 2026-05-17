@@ -2,46 +2,8 @@
 # AWS Bedrock — global cross-region inference profiles (ap-southeast-7)
 # ใช้ global. prefix เหมือน Claude Code
 
-model_list:
-  # ── Haiku (Basic tier ขึ้นไป) ──────────────────────────────
-  - model_name: claude-haiku
-    litellm_params:
-      model: global.anthropic.claude-haiku-4-5-20251001-v1:0
-      custom_llm_provider: bedrock
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-      aws_region_name: os.environ/AWS_REGION_NAME
-    model_info:
-      description: "Fast & cost-efficient — Basic/Standard/Pro/Power/Admin"
-      input_cost_per_token: 0.00000025
-      output_cost_per_token: 0.00000125
-
-  # ── Sonnet (Standard tier ขึ้นไป) ─────────────────────────
-  - model_name: claude-sonnet
-    litellm_params:
-      model: global.anthropic.claude-sonnet-4-6
-      custom_llm_provider: bedrock
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-      aws_region_name: os.environ/AWS_REGION_NAME
-    model_info:
-      description: "Balanced performance — Standard/Pro/Power/Admin"
-      input_cost_per_token: 0.000003
-      output_cost_per_token: 0.000015
-
-  # ── Opus (Pro tier ขึ้นไป) ────────────────────────────────
-  - model_name: claude-opus
-    litellm_params:
-      model: global.anthropic.claude-opus-4-7
-      custom_llm_provider: bedrock
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-      aws_region_name: os.environ/AWS_REGION_NAME
-    model_info:
-      description: "Most capable — Pro/Power/Admin"
-      input_cost_per_token: 0.000015
-      output_cost_per_token: 0.000075
-
+model_list: []
+  # Models are managed via LiteLLM UI (port 4000) — not defined here
 
 # ── General Settings ──────────────────────────────────────────
 litellm_settings:

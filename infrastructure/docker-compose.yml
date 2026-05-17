@@ -157,6 +157,7 @@ services:
       INCIDENT_EMAIL: ${INCIDENT_EMAIL:-ai-report@precise.co.th}
       BACKEND_BASE_URL: http://backend:8000
       POLICY_VERSION: ${POLICY_VERSION:-v1.0}
+      LITELLM_DEFAULT_TEAM_ID: ${LITELLM_DEFAULT_TEAM_ID:-}
     ports:
       - "8001:8000"
     depends_on:

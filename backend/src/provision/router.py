@@ -13,6 +13,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 LITELLM_BASE_URL = os.getenv("LITELLM_BASE_URL", "http://litellm:4000")
 LITELLM_MASTER_KEY = os.getenv("LITELLM_MASTER_KEY", "")
 INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "")
+LITELLM_DEFAULT_TEAM_ID = os.getenv("LITELLM_DEFAULT_TEAM_ID", "")
 
 
 class ProvisionRequest(BaseModel):
@@ -46,13 +47,10 @@ async def provision_key(
                 f"{LITELLM_BASE_URL}/key/generate",
                 headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
                 json={
-                    "models": ["claude-haiku"],
-                    "team_id": None,
-                    "metadata": {"email": str(body.email), "tier": "basic"},
+                    "user_id": str(body.email),
+                    "team_id": LITELLM_DEFAULT_TEAM_ID or None,
                     "key_alias": f"user:{body.email}",
-                    "max_budget": 14.28,
-                    "budget_duration": "monthly",
-                    "rpm_limit": 5,
+                    "metadata": {"email": str(body.email)},
                 },
             )
 
