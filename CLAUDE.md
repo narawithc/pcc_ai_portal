@@ -71,7 +71,8 @@ Config อยู่ใน `litellm/` directory
 - [x] Policy acceptance modal (POST /policy/accept + /policy/status + /auth/token flag)
 - [x] Monitoring stack (Prometheus + Grafana + Alertmanager + 3 dashboards + 10 alert rules)
 - [x] Deploy script (scripts/deploy.sh — infra / core / monitoring / all)
-- [ ] Production hardening (pentest, DLP for attachments)
+- [x] DLP for attachments (POST /dlp/scan-file — txt/md/pdf/docx, PII scan + classifier)
+- [ ] Production hardening (pentest)
 
 ## Project Agents
 agents อยู่ใน `.claude/agents/` — ใช้ได้ทันที
