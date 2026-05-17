@@ -42,7 +42,11 @@ async def _get_conn() -> asyncpg.Connection:
 
 
 def _row_to_response(row: asyncpg.Record) -> IncidentResponse:
-    return IncidentResponse(**dict(row))
+    d = dict(row)
+    d["id"] = str(d["id"])
+    if d.get("reporter_id") is not None:
+        d["reporter_id"] = str(d["reporter_id"])
+    return IncidentResponse(**d)
 
 
 async def _send_email(subject: str, body: str) -> None:

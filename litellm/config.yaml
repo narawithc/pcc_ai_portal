@@ -62,7 +62,11 @@ litellm_settings:
     password: os.environ/REDIS_PASSWORD
     ttl: 3600
     similarity_threshold: 0.80
-    redis_semantic_cache_embedding_model: text-embedding
+    redis_semantic_cache_embedding_model: bedrock/amazon.titan-embed-text-v2:0
+    redis_semantic_cache_embedding_kwargs:
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
   max_input_tokens: 100000
   success_callback: ["webhook"]
   failure_callback: ["webhook"]
