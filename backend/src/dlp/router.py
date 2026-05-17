@@ -1,11 +1,16 @@
-from fastapi import APIRouter, UploadFile, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from src.auth.router import UserInfo, get_current_user
 from src.classifier.rules import classify
 from src.pdpa.router import _PATTERNS, _ACTIONS, _persist_pii_event
 from src.dlp.extractor import extract_text
 
 router = APIRouter()
+
+_MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 class DLPScanResult(BaseModel):
@@ -17,8 +22,13 @@ class DLPScanResult(BaseModel):
 
 
 @router.post("/scan-file", response_model=DLPScanResult)
-async def scan_file(file: UploadFile) -> DLPScanResult:
+async def scan_file(
+    file: UploadFile,
+    user: Annotated[UserInfo, Depends(get_current_user)],
+) -> DLPScanResult:
     content = await file.read()
+    if len(content) > _MAX_FILE_BYTES:
+        raise HTTPException(status_code=413, detail="File too large (max 10 MB)")
 
     try:
         text = extract_text(file.filename or "", content)
@@ -43,7 +53,7 @@ async def scan_file(file: UploadFile) -> DLPScanResult:
 
     if pii_detected:
         await _persist_pii_event(
-            user_email=None,
+            user_email=user.email,
             pii_types=pii_detected,
             action="blocked" if should_block else "warned",
         )

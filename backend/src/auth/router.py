@@ -14,13 +14,18 @@ import asyncpg
 
 router = APIRouter()
 
-AUTH_MODE = os.getenv("AUTH_MODE", "dev")
+AUTH_MODE = os.getenv("AUTH_MODE", "prod")
 AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID", "")
 AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID", "")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 ALGORITHM = "HS256"
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 CURRENT_POLICY_VERSION = os.getenv("POLICY_VERSION", "v1.0")
+
+import sys as _sys
+if AUTH_MODE != "dev" and SECRET_KEY == "dev-secret-key":
+    print("FATAL: SECRET_KEY must be set when AUTH_MODE != dev", file=_sys.stderr)
+    _sys.exit(1)
 
 # RBAC tier → allowed models
 TIER_MODELS = {

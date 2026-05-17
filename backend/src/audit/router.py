@@ -5,7 +5,7 @@ Writes to audit_logs with classification from request metadata.
 
 import os
 import uuid
-from fastapi import APIRouter
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 import asyncpg
@@ -14,6 +14,7 @@ router = APIRouter()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 USD_TO_THB = float(os.getenv("USD_TO_THB", "35.0"))
+LITELLM_CALLBACK_SECRET = os.getenv("LITELLM_CALLBACK_SECRET", "")
 
 
 async def _get_conn() -> asyncpg.Connection:
@@ -41,8 +42,13 @@ class LiteLLMCallbackPayload(BaseModel):
 
 
 @router.post("/post-call", status_code=204)
-async def post_call_hook(payload: LiteLLMCallbackPayload) -> None:
+async def post_call_hook(
+    payload: LiteLLMCallbackPayload,
+    x_callback_secret: str | None = Header(default=None, alias="x-callback-secret"),
+) -> None:
     """Persist audit log entry from LiteLLM success/failure callback."""
+    if LITELLM_CALLBACK_SECRET and x_callback_secret != LITELLM_CALLBACK_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
     usage = payload.usage or {}
     input_tokens = usage.get("prompt_tokens", 0)
     output_tokens = usage.get("completion_tokens", 0)

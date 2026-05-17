@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 from src.auth.router import UserInfo, get_current_user
 from src.credentials.router import _require_admin
@@ -26,6 +26,7 @@ from src.incidents.models import (
 router = APIRouter()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
+INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "")
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
@@ -35,6 +36,7 @@ INCIDENT_EMAIL = os.getenv("INCIDENT_EMAIL", "ai-report@precise.co.th")
 _VALID_CATEGORIES = {"data_leak", "hallucination", "misuse", "deepfake", "other"}
 _VALID_SEVERITIES = {"low", "medium", "high", "critical"}
 _VALID_STATUSES = {"reported", "triaged", "contained", "resolved", "closed"}
+_ALLOWED_INCIDENT_COLS = frozenset({"status", "resolution", "contained_at", "investigated_at", "pdpc_notified_at", "updated_at"})
 
 
 async def _get_conn() -> asyncpg.Connection:
@@ -133,8 +135,13 @@ async def create_incident(
 
 
 @router.post("/internal", response_model=IncidentResponse, status_code=201)
-async def create_incident_internal(body: IncidentInternalCreate) -> IncidentResponse:
+async def create_incident_internal(
+    body: IncidentInternalCreate,
+    x_internal_secret: str | None = Header(default=None, alias="x-internal-secret"),
+) -> IncidentResponse:
     """Internal endpoint — called by classifier / pii-detector (no user auth)."""
+    if INTERNAL_SECRET and x_internal_secret != INTERNAL_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
     conn = await _get_conn()
     try:
         reporter_id = None
@@ -205,6 +212,7 @@ async def update_incident(
         if body.pdpc_notified_at is not None:
             updates["pdpc_notified_at"] = body.pdpc_notified_at
 
+        assert all(k in _ALLOWED_INCIDENT_COLS for k in updates), f"Unexpected column: {updates.keys()}"
         set_clause = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(updates))
         values = [incident_id] + list(updates.values())
         row = await conn.fetchrow(
