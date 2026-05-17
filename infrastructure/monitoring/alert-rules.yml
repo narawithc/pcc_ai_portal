@@ -1,0 +1,168 @@
+groups:
+  - name: litellm_alerts
+    interval: 30s
+    rules:
+      # LiteLLM error rate > 5% for 5 minutes
+      - alert: LiteLLMHighErrorRate
+        expr: |
+          (
+            sum(rate(litellm_request_total{status_code=~"5.."}[5m]))
+            /
+            sum(rate(litellm_request_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          environment: pcc-ai-portal
+        annotations:
+          summary: "LiteLLM error rate exceeds 5%"
+          description: "LiteLLM 5xx error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      # LiteLLM no requests (dead service detection)
+      - alert: LiteLLMDown
+        expr: up{job="litellm"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          environment: pcc-ai-portal
+        annotations:
+          summary: "LiteLLM proxy is down"
+          description: "Prometheus cannot scrape LiteLLM metrics for 2 minutes."
+
+      # High token usage rate
+      - alert: LiteLLMHighTokenUsage
+        expr: |
+          sum(rate(litellm_tokens_used_total[5m])) > 10000
+        for: 5m
+        labels:
+          severity: warning
+          environment: pcc-ai-portal
+        annotations:
+          summary: "LiteLLM token usage spike detected"
+          description: "Token usage rate is {{ $value | humanize }} tokens/s — possible runaway usage."
+
+  - name: backend_alerts
+    interval: 15s
+    rules:
+      # Backend 5xx rate > 1% for 5 minutes
+      - alert: BackendHighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="backend", status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="backend"}[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          environment: pcc-ai-portal
+        annotations:
+          summary: "Backend 5xx error rate exceeds 1%"
+          description: "Backend HTTP 5xx error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      # Backend down
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          environment: pcc-ai-portal
+        annotations:
+          summary: "PCC Backend service is down"
+          description: "Prometheus cannot scrape Backend metrics for 2 minutes."
+
+      # High p99 latency
+      - alert: BackendHighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket{job="backend"}[5m])) by (le, handler)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          environment: pcc-ai-portal
+        annotations:
+          summary: "Backend p99 latency > 5s"
+          description: "Handler {{ $labels.handler }} p99 latency is {{ $value | humanizeDuration }}."
+
+  - name: redis_alerts
+    interval: 15s
+    rules:
+      # Redis memory usage > 80%
+      - alert: RedisHighMemoryUsage
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.80
+        for: 5m
+        labels:
+          severity: warning
+          environment: pcc-ai-portal
+        annotations:
+          summary: "Redis memory usage exceeds 80%"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}. Consider increasing maxmemory or eviction policy."
+
+      # Redis down
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          environment: pcc-ai-portal
+        annotations:
+          summary: "Redis is down"
+          description: "Redis exporter reports Redis is unreachable for 2 minutes."
+
+      # High cache miss rate (semantic cache health)
+      - alert: RedisLowHitRate
+        expr: |
+          (
+            redis_keyspace_hits_total /
+            (redis_keyspace_hits_total + redis_keyspace_misses_total)
+          ) < 0.20
+        for: 10m
+        labels:
+          severity: warning
+          environment: pcc-ai-portal
+        annotations:
+          summary: "Redis cache hit rate below 20%"
+          description: "Redis cache hit rate is {{ $value | humanizePercentage }} — semantic cache may not be warming up."
+
+  - name: postgres_alerts
+    interval: 30s
+    rules:
+      # PostgreSQL connections > 80% of max_connections
+      - alert: PostgreSQLHighConnections
+        expr: |
+          (
+            sum(pg_stat_activity_count) /
+            pg_settings_max_connections
+          ) > 0.80
+        for: 5m
+        labels:
+          severity: warning
+          environment: pcc-ai-portal
+        annotations:
+          summary: "PostgreSQL connections exceed 80% of max"
+          description: "PostgreSQL is using {{ $value | humanizePercentage }} of max_connections ({{ $value }} active)."
+
+      # PostgreSQL down
+      - alert: PostgreSQLDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          environment: pcc-ai-portal
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "Postgres exporter reports PostgreSQL is unreachable for 2 minutes."
+
+      # Long-running queries
+      - alert: PostgreSQLLongRunningQuery
+        expr: |
+          max(pg_stat_activity_max_tx_duration{state="active"}) > 300
+        for: 2m
+        labels:
+          severity: warning
+          environment: pcc-ai-portal
+        annotations:
+          summary: "PostgreSQL has long-running query (> 5 min)"
+          description: "Longest active transaction is {{ $value | humanizeDuration }}."

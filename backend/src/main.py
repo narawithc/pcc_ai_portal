@@ -4,6 +4,7 @@ FastAPI app: auth middleware + PII detector + billing service
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.auth.router import router as auth_router
 from src.pdpa.router import router as pdpa_router
@@ -23,6 +24,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Prometheus metrics — exposes /metrics endpoint
+Instrumentator(
+    should_group_status_codes=False,
+    should_ignore_untemplated=True,
+    should_respect_env_var=False,
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=["/health", "/metrics"],
+    inprogress_name="http_requests_inprogress",
+    inprogress_labels=True,
+).instrument(app).expose(app, include_in_schema=False, tags=["monitoring"])
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(pdpa_router, prefix="/guardrails", tags=["pdpa"])

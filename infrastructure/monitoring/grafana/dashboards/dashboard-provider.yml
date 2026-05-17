@@ -1,0 +1,14 @@
+apiVersion: 1
+
+providers:
+  - name: "PCC AI Portal Dashboards"
+    orgId: 1
+    folder: "PCC AI Portal"
+    folderUid: "pcc-ai-portal"
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false
