@@ -46,10 +46,9 @@ services:
     volumes:
       - ../litellm/config.yaml:/app/config.yaml:ro
     environment:
-      # AWS credentials — add manually in production via LiteLLM UI or environment
-      # AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      # AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      # AWS_REGION_NAME: ${AWS_REGION_NAME:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION_NAME: ${AWS_REGION_NAME:-us-east-1}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-pcc-master-key}
       DATABASE_URL: postgresql://${POSTGRES_USER:-pcc_admin}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-pcc_ai}
       REDIS_HOST: redis
