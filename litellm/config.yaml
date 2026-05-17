@@ -1,47 +1,13 @@
 # LiteLLM Proxy Config — PCC AI Portal
-# AWS Bedrock — global cross-region inference profiles (ap-southeast-7)
-# ใช้ global. prefix เหมือน Claude Code
+#
+# model_list is intentionally empty.
+# Add models manually via the LiteLLM Admin UI (http://localhost:4000/ui)
+# or via API after deployment — models are persisted in the database.
+#
+# STORE_MODEL_IN_DB=True is set in docker-compose, so any model added
+# through the UI will survive container restarts.
 
-model_list:
-  # ── Haiku (Basic tier ขึ้นไป) ──────────────────────────────
-  - model_name: claude-haiku
-    litellm_params:
-      model: global.anthropic.claude-haiku-4-5-20251001-v1:0
-      custom_llm_provider: bedrock
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-      aws_region_name: os.environ/AWS_REGION_NAME
-    model_info:
-      description: "Fast & cost-efficient — Basic/Standard/Pro/Power/Admin"
-      input_cost_per_token: 0.00000025
-      output_cost_per_token: 0.00000125
-
-  # ── Sonnet (Standard tier ขึ้นไป) ─────────────────────────
-  - model_name: claude-sonnet
-    litellm_params:
-      model: global.anthropic.claude-sonnet-4-6
-      custom_llm_provider: bedrock
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-      aws_region_name: os.environ/AWS_REGION_NAME
-    model_info:
-      description: "Balanced performance — Standard/Pro/Power/Admin"
-      input_cost_per_token: 0.000003
-      output_cost_per_token: 0.000015
-
-  # ── Opus (Pro tier ขึ้นไป) ────────────────────────────────
-  - model_name: claude-opus
-    litellm_params:
-      model: global.anthropic.claude-opus-4-7
-      custom_llm_provider: bedrock
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-      aws_region_name: os.environ/AWS_REGION_NAME
-    model_info:
-      description: "Most capable — Pro/Power/Admin"
-      input_cost_per_token: 0.000015
-      output_cost_per_token: 0.000075
-
+model_list: []
 
 # ── General Settings ──────────────────────────────────────────
 litellm_settings:
@@ -52,14 +18,9 @@ litellm_settings:
     port: 6379
     password: os.environ/REDIS_PASSWORD
     ttl: 3600
-  # semantic cache (redis-semantic) requires Titan embed available in ap-southeast-7
-  # re-enable when cross-region inference profile for embeddings is available
   max_input_tokens: 100000
   success_callback: ["webhook"]
   failure_callback: ["webhook"]
-  # WEBHOOK_URL is set via WEBHOOK_URL env var in docker-compose (litellm service)
-  # LiteLLM webhook callback reads the URL only from the WEBHOOK_URL env var,
-  # not from a yaml key. See: litellm/integrations/webhook/webhook.py
 
 # ── Guardrails (pre_call hooks → backend) ────────────────────
 guardrails:
