@@ -1,6 +1,6 @@
 # PCC AI Portal
 
-AI Portal สำหรับองค์กร Precise Technology — LiteLLM gateway + Open-WebUI พร้อม RBAC 5 ระดับ, audit log, PII detection ภาษาไทย, และ Prometheus/Grafana monitoring stack
+AI Portal สำหรับองค์กร Precise Technology — LiteLLM gateway + Open-WebUI พร้อม RBAC 5 ระดับ, audit log, PII detection ภาษาไทย, DLP file scanner, และ Prometheus/Grafana monitoring stack
 
 ## Architecture
 
@@ -78,11 +78,23 @@ POSTGRES_PASSWORD=<strong-password>
 REDIS_PASSWORD=<strong-password>
 LITELLM_MASTER_KEY=sk-pcc-<strong-key>
 WEBUI_SECRET_KEY=<32-char-secret>
-SECRET_KEY=<32-char-jwt-secret>
+SECRET_KEY=<32-char-jwt-secret>          # REQUIRED — backend crashes on startup if missing in prod
+
+# Auth mode (prod = Azure AD required; dev = mock users only)
+AUTH_MODE=prod
+
+# Security secrets for internal endpoints (optional but strongly recommended)
+INTERNAL_SECRET=<random-32-chars>        # protects POST /incidents/internal
+LITELLM_CALLBACK_SECRET=<random-32-chars> # protects POST /audit/post-call
 
 # Monitoring (optional)
 GF_SECURITY_ADMIN_PASSWORD=<grafana-admin-password>
 ```
+
+> **Security note:** `SECRET_KEY` is required in `AUTH_MODE=prod`. The backend will **exit on startup** if `SECRET_KEY` is left at the default value. Generate with:
+> ```bash
+> python3 -c "import secrets; print(secrets.token_hex(32))"
+> ```
 
 ### 2. Deploy via script
 
@@ -174,6 +186,39 @@ docker compose --profile monitoring up -d
 | PostgreSQLLongRunningQuery | active tx > 5m | warning |
 
 Alerts route to `INCIDENT_EMAIL` via existing `SMTP_*` env vars.
+
+---
+
+## DLP File Scanner API
+
+ตรวจ PII และข้อมูลลับในไฟล์แนบก่อนส่งให้ LLM ต้องมี JWT token
+
+**Supported formats:** `.txt`, `.md`, `.pdf`, `.docx` (max 10 MB)
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8001/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"azure_token": "dev-admin@precise.co.th"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+curl -X POST http://localhost:8001/dlp/scan-file \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/path/to/document.pdf"
+```
+
+```json
+{
+  "action": "BLOCK",
+  "classification": "confidential",
+  "pii_detected": ["thai_national_id"],
+  "reasons": ["confidential_pii", "pii_detected: thai_national_id"],
+  "filename": "document.pdf"
+}
+```
+
+| `action` | Meaning |
+|----------|---------|
+| `ALLOW` | ไม่พบ PII / sensitive data |
+| `BLOCK` | พบ `thai_national_id` หรือ classification เป็น `top_secret` |
 
 ---
 
