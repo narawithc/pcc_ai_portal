@@ -23,7 +23,7 @@ router = APIRouter()
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 CURRENT_POLICY_VERSION = os.getenv("POLICY_VERSION", "v1.0")
 
-_POLICY_DOC_PATH = Path(__file__).parent.parent.parent.parent / "docs" / "ai-policy.md"
+_POLICY_DOC_PATH = Path(__file__).parent.parent.parent / "docs" / "ai-policy.md"
 
 
 async def _get_conn() -> asyncpg.Connection:
