@@ -42,31 +42,18 @@ model_list:
       input_cost_per_token: 0.000015
       output_cost_per_token: 0.000075
 
-  # ── Embeddings (semantic cache) ───────────────────────────
-  - model_name: text-embedding
-    litellm_params:
-      model: bedrock/amazon.titan-embed-text-v2:0
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-      aws_region_name: os.environ/AWS_REGION_NAME
-    model_info:
-      mode: embedding
 
 # ── General Settings ──────────────────────────────────────────
 litellm_settings:
   cache: true
   cache_params:
-    type: redis-semantic
+    type: redis
     host: redis
     port: 6379
     password: os.environ/REDIS_PASSWORD
     ttl: 3600
-    similarity_threshold: 0.80
-    redis_semantic_cache_embedding_model: bedrock/amazon.titan-embed-text-v2:0
-    redis_semantic_cache_embedding_kwargs:
-      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
-      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-      aws_region_name: os.environ/AWS_REGION_NAME
+  # semantic cache (redis-semantic) requires Titan embed available in ap-southeast-7
+  # re-enable when cross-region inference profile for embeddings is available
   max_input_tokens: 100000
   success_callback: ["webhook"]
   failure_callback: ["webhook"]
